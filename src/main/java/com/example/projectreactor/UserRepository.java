@@ -1,36 +1,39 @@
 package com.example.projectreactor;
 
+import com.example.AbstractUserRepository;
 import com.example.User;
-import lombok.extern.log4j.Log4j2;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Duration;
+import java.util.Optional;
 
-@Log4j2
-public class UserRepository {
-
-    private static final AtomicLong idGenerate = new AtomicLong();
-    private static final List<Object> STORE = new CopyOnWriteArrayList<>();
+public class UserRepository extends AbstractUserRepository {
 
     public Mono<Void> deleteAll() {
-        return Mono.fromRunnable(STORE::clear);
+        return Mono.fromRunnable(this::blockDeleteAll);
     }
 
     public Mono<User> save(User user) {
-        return Mono.fromCallable(() -> {
-            long id = idGenerate.getAndIncrement();
-            String name = user.getName();
-            log.info("save new user with id: {}, name: {}", id, name);
-            User u = new User(id, name);
-            STORE.add(u);
-            return u;
+        return Mono.fromCallable(() -> this.blockSave(user));
+    }
+
+    public Mono<Void> doError(String something) {
+        return Mono.fromRunnable(() -> {
+            throw new RuntimeException(something + " wrong.");
         });
     }
 
-    public static void println() {
-        log.info("show all user: {}", STORE);
+    public Mono<User> longCostQuery(Long id) {
+        return Mono.delay(Duration.ofSeconds(5))
+                .flatMap(delay -> {
+                    Optional<User> userOpt = store.stream()
+                            .filter(e -> e instanceof User)
+                            .map(e -> (User) e)
+                            .filter(e -> e.getId().equals(id))
+                            .findFirst();
+                    // return Mono.just(userOpt.orElse(new User(-1l, "not found")));
+                    return userOpt.isPresent() ? Mono.just(userOpt.get()) : Mono.empty();
+                });
     }
 
 }
