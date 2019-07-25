@@ -1,6 +1,7 @@
 package com.example;
 
 import com.example.projectreactor.UserRepository;
+import com.example.tools.Utils;
 import lombok.extern.log4j.Log4j2;
 import org.junit.BeforeClass;
 import org.junit.Test;
